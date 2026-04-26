@@ -8,25 +8,23 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-#define MAX_USERS       10
-#define MAX_RESOURCES   5
+#define MAX_USERS       20
+#define MAX_RESOURCES   20
 #define MAX_MESSAGES    100
 #define MAX_INCIDENTS   200
 #define MAX_STR         64
 #define MAX_MSG         256
 #define MAX_LOGIN_TRIES 3
 
-// ─── Resource Names ───────────────────────────────────────────────────────────
-#define NUM_RESOURCES 5
-static const char *RESOURCE_NAMES[NUM_RESOURCES] = {
-    "Fire_Suppression",
-    "Emergency_Pump",
-    "Pressure_Valve",
-    "Power_Module",
-    "Comms_Terminal"
-};
+// ─── File Paths ───────────────────────────────────────────────────────────────
+#define FILE_USERS      "data/users.csv"
+#define FILE_RESOURCES  "data/resources.csv"
+#define FILE_MESSAGES   "data/messages.csv"
+#define FILE_INCIDENTS  "data/incidents.csv"
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
 #define NUM_ROLES 5
@@ -37,12 +35,6 @@ static const char *ROLES[NUM_ROLES] = {
     "Maintenance_Engineer",
     "Comms_Officer"
 };
-
-// ─── File Paths ───────────────────────────────────────────────────────────────
-#define FILE_USERS      "data/users.csv"
-#define FILE_RESOURCES  "data/resources.csv"
-#define FILE_MESSAGES   "data/messages.csv"
-#define FILE_INCIDENTS  "data/incidents.csv"
 
 // ─── Structs ──────────────────────────────────────────────────────────────────
 typedef struct {
@@ -55,21 +47,25 @@ typedef struct {
 
 typedef struct {
     char resource[MAX_STR];
-    char held_by[MAX_STR];   // "none" if free
+    char held_by[MAX_STR];
+    char waited_by[MAX_STR];
     int  status;             // 0=free, 1=allocated
 } Resource;
 
 typedef struct {
     char timestamp[MAX_STR];
     char sender[MAX_STR];
-    char receiver[MAX_STR];  // "ALL" for broadcast
+    char receiver[MAX_STR];
     char message[MAX_MSG];
 } Message;
 
-// ─── Global Mutex & Semaphore ─────────────────────────────────────────────────
+// ─── Global Mutex ────────────────────────────────────────────────────────────
 extern pthread_mutex_t resource_mutex;
 extern pthread_mutex_t file_mutex;
-extern sem_t           resource_sem[NUM_RESOURCES];
+
+// Dynamic semaphore array (supports up to MAX_RESOURCES)
+extern sem_t *resource_sem[MAX_RESOURCES];
+extern int    num_resources; // actual count loaded from CSV
 
 // ─── Utility Functions ────────────────────────────────────────────────────────
 void get_timestamp(char *buf, int size);
