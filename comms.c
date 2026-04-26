@@ -58,13 +58,14 @@ void broadcast_emergency(const char *sender, const char *alert) {
     append_message(sender, "ALL", alert);
     log_incident(sender, "EMERGENCY_BROADCAST", alert);
 
-    // Wake up all semaphores
-    for (int i = 0; i < NUM_RESOURCES; i++) {
-        int val;
-        sem_getvalue(&resource_sem[i], &val);
-        if (val == 0) {
-            sem_post(&resource_sem[i]);
-            printf(YELLOW "[SYSTEM        ] 📢 SEMAPHORE POST    — Waking threads blocked on %s\n" RESET, RESOURCE_NAMES[i]);
-        }
+    // Signal ALL resource semaphores unconditionally
+    Resource dyn_res[MAX_RESOURCES];
+    int dyn_count = 0;
+    load_resources(dyn_res, &dyn_count);
+    num_resources = dyn_count;
+    for (int i = 0; i < dyn_count; i++) {
+        sem_post(resource_sem[i]);
+        printf(YELLOW "[SYSTEM        ] 📢 SEMAPHORE POST    — Waking threads blocked on %s\n" RESET, dyn_res[i].resource);
     }
+    fflush(stdout);
 }
