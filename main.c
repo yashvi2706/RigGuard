@@ -13,14 +13,21 @@ void show_menu(const char *username, const char *role) {
     printf(CYAN "║  " WHITE "Role     : %-38s" CYAN "║\n" RESET, role);
     printf(CYAN "╠══════════════════════════════════════════════════╣\n" RESET);
     printf(CYAN "║  " WHITE "1. 📋 View Crew Message Board              " CYAN "║\n" RESET);
-    printf(CYAN "║  " WHITE "2. ✉️  Send Message to Crew                 " CYAN "║\n" RESET);
+    printf(CYAN "║  " WHITE "2. ✉️  Send Message to Crew                " CYAN "║\n" RESET);
     printf(CYAN "║  " WHITE "3. 🔧 Request Critical Equipment           " CYAN "║\n" RESET);
     printf(CYAN "║  " WHITE "4. 🔓 Release Equipment                    " CYAN "║\n" RESET);
     printf(CYAN "║  " WHITE "5. 📊 View Equipment Allocation Table      " CYAN "║\n" RESET);
-    printf(CYAN "║  " WHITE "6. ⚠️  Run Deadlock Detection               " CYAN "║\n" RESET);
+    printf(CYAN "║  " WHITE "6. ⚠️  Run Deadlock Detection              " CYAN "║\n" RESET);
     printf(CYAN "║  " WHITE "7. 🚨 Trigger Emergency Broadcast          " CYAN "║\n" RESET);
     printf(CYAN "║  " WHITE "8. 📜 View Incident Logs                   " CYAN "║\n" RESET);
-    printf(CYAN "║  " WHITE "9. 🚪 Logout                               " CYAN "║\n" RESET);
+    printf(CYAN "║  " WHITE "9. 🚪 Logout                              " CYAN  "║\n" RESET);
+    if (strcmp(role, "Rig_Commander") == 0) {
+    printf(CYAN "╠══════════════════════════════════════════════════╣\n" RESET);
+    printf(CYAN "║  " MAGENTA "── COMMANDER ONLY ──                       " CYAN "║\n" RESET);
+    printf(CYAN "║  " WHITE "10. 👤 Register New Crew Member            " CYAN "║\n" RESET);
+    printf(CYAN "║  " WHITE "11. 🛠️  Add New Equipment                   " CYAN "║\n" RESET);
+    printf(CYAN "║  " WHITE "12. 🔐 Unlock Locked Account               " CYAN "║\n" RESET);
+    }
     printf(CYAN "╚══════════════════════════════════════════════════╝\n" RESET);
     printf(WHITE "Choice: " RESET);
 }
@@ -29,6 +36,18 @@ int main() {
     // Initialize
     printf(CYAN "[SYSTEM] 🚀 BOOT             — RigGuard initializing...\n" RESET);
     init_data_files();
+
+    // Only reset semaphores on first process (fresh session)
+    FILE *sem_flag = fopen("data/.sem_init", "r");
+    if (!sem_flag) {
+        reset_semaphores();
+        sem_flag = fopen("data/.sem_init", "w");
+        if (sem_flag) fclose(sem_flag);
+        printf(GREEN "[SYSTEM] 🆕 FIRST PROCESS   — Semaphores reset for fresh session\n" RESET);
+    } else {
+        fclose(sem_flag);
+        printf(GREEN "[SYSTEM] 🔗 JOINING SESSION — Reusing existing semaphores\n" RESET);
+    }
     init_semaphores();
     printf(GREEN "[SYSTEM] ✅ READY            — All systems operational\n\n" RESET);
 
@@ -104,6 +123,18 @@ int main() {
                 running = 0;
                 break;
 
+            case 10:
+                register_crew(role);
+                break;
+
+            case 11:
+                add_equipment(role);
+                break;
+
+            case 12:
+                unlock_crew(role);
+                break;
+
             default:
                 printf(RED "❌ Invalid choice. Try again.\n" RESET);
         }
@@ -115,8 +146,7 @@ int main() {
     }
 
     // Cleanup semaphores
-    for (int i = 0; i < NUM_RESOURCES; i++)
-        sem_destroy(&resource_sem[i]);
+    cleanup_semaphores();
 
     printf(GREEN "\n[SYSTEM] 🛢️  SHUTDOWN        — RigGuard session ended safely.\n" RESET);
     return 0;
