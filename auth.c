@@ -19,12 +19,6 @@ int login(char *username_out, char *role_out) {
     print_separator();
 
     // Default credentials hint
-    printf(WHITE "Default Crew Credentials:\n" RESET);
-    printf("  commander / cmd123    (Rig Commander)\n");
-    printf("  ravi      / fire123   (Fire Safety Officer)\n");
-    printf("  arjun     / drill123  (Drilling Operator)\n");
-    printf("  meera     / maint123  (Maintenance Engineer)\n");
-    printf("  priya     / comms123  (Comms Officer)\n");
     print_separator();
 
     char username[MAX_STR], password[MAX_STR];
