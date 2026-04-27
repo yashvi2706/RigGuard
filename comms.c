@@ -1,4 +1,6 @@
 #include "comms.h"
+#include "threads.h"
+#include "signals.h"
 
 void send_message(const char *sender) {
     print_separator();
@@ -41,6 +43,9 @@ void send_message(const char *sender) {
     printf(GREEN "[THREAD-%-10s] ✅ MESSAGE SENT       — To: %s\n" RESET, sender, receiver);
     printf(YELLOW "[THREAD-%-10s] 🔓 MUTEX UNLOCKED    — Exiting critical section\n" RESET, sender);
 
+    // Also send via TCP socket for real-time delivery
+    socket_send_message(sender, receiver, msg);
+
     char detail[MAX_MSG];
     snprintf(detail, sizeof(detail), "To=%s Msg=%s", receiver, msg);
     log_incident(sender, "MESSAGE_SENT", detail);
@@ -58,10 +63,17 @@ void broadcast_emergency(const char *sender, const char *alert) {
     append_message(sender, "ALL", alert);
     log_incident(sender, "EMERGENCY_BROADCAST", alert);
 
+    // Send emergency via TCP socket to all crew instantly
+    socket_send_emergency(sender, alert);
+
+    // Also send SIGUSR1 signal to all active crew processes
+    printf(RED "[SIGNAL] 🚨 SIGUSR1 SENDING  — Emergency signal to all crew processes\n" RESET);
+    signal_all_crew(SIGUSR1, alert);
+
     // Signal ALL resource semaphores unconditionally
     Resource dyn_res[MAX_RESOURCES];
     int dyn_count = 0;
-    load_resources(dyn_res, &dyn_count);
+    load_resources_silent(dyn_res, &dyn_count);
     num_resources = dyn_count;
     for (int i = 0; i < dyn_count; i++) {
         sem_post(resource_sem[i]);
