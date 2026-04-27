@@ -4,6 +4,8 @@
 #include "resources.h"
 #include "deadlock.h"
 #include "comms.h"
+#include "threads.h"
+#include "signals.h"
 
 void show_menu(const char *username, const char *role) {
     printf(CYAN "\n╔══════════════════════════════════════════════════╗\n" RESET);
@@ -13,14 +15,14 @@ void show_menu(const char *username, const char *role) {
     printf(CYAN "║  " WHITE "Role     : %-38s" CYAN "║\n" RESET, role);
     printf(CYAN "╠══════════════════════════════════════════════════╣\n" RESET);
     printf(CYAN "║  " WHITE "1. 📋 View Crew Message Board              " CYAN "║\n" RESET);
-    printf(CYAN "║  " WHITE "2. ✉️  Send Message to Crew                " CYAN "║\n" RESET);
+    printf(CYAN "║  " WHITE "2. ✉️  Send Message to Crew                 " CYAN "║\n" RESET);
     printf(CYAN "║  " WHITE "3. 🔧 Request Critical Equipment           " CYAN "║\n" RESET);
     printf(CYAN "║  " WHITE "4. 🔓 Release Equipment                    " CYAN "║\n" RESET);
     printf(CYAN "║  " WHITE "5. 📊 View Equipment Allocation Table      " CYAN "║\n" RESET);
-    printf(CYAN "║  " WHITE "6. ⚠️  Run Deadlock Detection              " CYAN "║\n" RESET);
+    printf(CYAN "║  " WHITE "6. ⚠️  Run Deadlock Detection               " CYAN "║\n" RESET);
     printf(CYAN "║  " WHITE "7. 🚨 Trigger Emergency Broadcast          " CYAN "║\n" RESET);
     printf(CYAN "║  " WHITE "8. 📜 View Incident Logs                   " CYAN "║\n" RESET);
-    printf(CYAN "║  " WHITE "9. 🚪 Logout                              " CYAN  "║\n" RESET);
+    printf(CYAN "║  " WHITE "9.  🚪 Logout                              " CYAN "║\n" RESET);
     if (strcmp(role, "Rig_Commander") == 0) {
     printf(CYAN "╠══════════════════════════════════════════════════╣\n" RESET);
     printf(CYAN "║  " MAGENTA "── COMMANDER ONLY ──                       " CYAN "║\n" RESET);
@@ -35,6 +37,7 @@ void show_menu(const char *username, const char *role) {
 int main() {
     // Initialize
     printf(CYAN "[SYSTEM] 🚀 BOOT             — RigGuard initializing...\n" RESET);
+    setup_signal_handlers();
     init_data_files();
 
     // Only reset semaphores on first process (fresh session)
@@ -70,6 +73,14 @@ int main() {
         printf(RED "❌ Too many failed login attempts. Exiting.\n" RESET);
         return 1;
     }
+
+    // Register PID for signal-based IPC
+    write_signal_pid(username);
+
+    // Connect to server and start background threads
+    printf(CYAN "\n[SYSTEM] 🔌 CONNECTING      — Attempting to connect to RigGuard server...\n" RESET);
+    connect_to_server(username, role);
+    start_threads(username, role);
 
     // Main menu loop
     int running = 1;
@@ -120,6 +131,8 @@ int main() {
 
             case 9:
                 logout(username);
+                stop_threads();
+                cleanup_signal_pid(username);
                 running = 0;
                 break;
 
