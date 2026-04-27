@@ -77,7 +77,7 @@ void request_resource(const char *username, const char *role) {
     // Load current resources dynamically (picks up newly added equipment too)
     Resource cur_res[MAX_RESOURCES];
     int cur_count = 0;
-    load_resources(cur_res, &cur_count);
+    load_resources_silent(cur_res, &cur_count);
 
     // Sync semaphores for any newly added equipment
     if (cur_count > num_resources) {
@@ -142,55 +142,63 @@ void request_resource(const char *username, const char *role) {
         log_incident(username, "GRANTED", detail);
 
     } else {
-        // ── BUSY: record who is waiting, release lock, sleep on semaphore ──
+        // ── BUSY: loop until resource is acquired ──────────────────────────
         char held_by[MAX_STR];
         strncpy(held_by, res[res_idx].held_by, MAX_STR);
 
-        // *** KEY FIX: write waited_by to CSV so deadlock detector can see it ***
+        printf(RED "[THREAD-%-10s] ⚠️  RESOURCE BUSY     — %s held by %s\n" RESET, username, res_name, held_by);
+
+        // Record wait in CSV for deadlock detection
         strncpy(res[res_idx].waited_by, username, MAX_STR);
         save_resources(res, rcount);
-
         cross_unlock();
         printf(YELLOW "[THREAD-%-10s] 🔓 MUTEX UNLOCKED    — Released lock while sleeping\n" RESET, username);
-
-        printf(RED "[THREAD-%-10s] ⚠️  RESOURCE BUSY     — %s held by %s\n" RESET, username, res_name, held_by);
         printf(YELLOW "[THREAD-%-10s] 😴 THREAD SLEEPING   — Waiting for %s to be released\n" RESET, username, res_name);
         printf(YELLOW "[THREAD-%-10s] 📝 WAIT RECORDED     — Written to resources.csv for deadlock detection\n" RESET, username);
         snprintf(detail, sizeof(detail), "Blocked on %s held by %s", res_name, held_by);
         log_incident(username, "BLOCKED", detail);
 
-        printf(YELLOW "[THREAD-%-10s] ⏳ SEMAPHORE WAIT    — Blocking on %s semaphore...\n" RESET, username, res_name);
-        fflush(stdout);
+        // ── Retry loop: keep waiting until resource is free ────────────────
+        int granted = 0;
+        while (!granted) {
+            printf(YELLOW "[THREAD-%-10s] ⏳ SEMAPHORE WAIT    — Blocking on %s semaphore...\n" RESET, username, res_name);
+            fflush(stdout);
 
-        sem_wait(resource_sem[choice]); // ← TRULY BLOCKS, woken by sem_post in release
+            sem_wait(resource_sem[choice]); // block until sem_post
 
-        printf(GREEN "[THREAD-%-10s] 🌅 THREAD AWAKE      — Woken by semaphore signal!\n" RESET, username);
-        printf(GREEN "[THREAD-%-10s] 🔄 RETRYING          — Re-attempting to acquire %s\n" RESET, username, res_name);
+            printf(GREEN "[THREAD-%-10s] 🌅 THREAD AWAKE      — Woken by semaphore signal!\n" RESET, username);
+            printf(GREEN "[THREAD-%-10s] 🔄 RETRYING          — Re-attempting to acquire %s\n" RESET, username, res_name);
 
-        printf(YELLOW "[THREAD-%-10s] 🔒 MUTEX LOCKED      — Re-entering critical section\n" RESET, username);
-        cross_lock();
+            printf(YELLOW "[THREAD-%-10s] 🔒 MUTEX LOCKED      — Re-entering critical section\n" RESET, username);
+            cross_lock();
+            load_resources(res, &rcount);
 
-        load_resources(res, &rcount);
-        res_idx = -1;
-        for (int i = 0; i < rcount; i++) {
-            if (strcmp(res[i].resource, res_name) == 0) { res_idx = i; break; }
-        }
+            res_idx = -1;
+            for (int i = 0; i < rcount; i++) {
+                if (strcmp(res[i].resource, res_name) == 0) { res_idx = i; break; }
+            }
 
-        if (res_idx != -1 && res[res_idx].status == 0) {
-            strncpy(res[res_idx].held_by, username, MAX_STR);
-            strncpy(res[res_idx].waited_by, "none", MAX_STR);
-            res[res_idx].status = 1;
-            save_resources(res, rcount);
-            cross_unlock();
-            printf(YELLOW "[THREAD-%-10s] 🔓 MUTEX UNLOCKED    — Exiting critical section\n" RESET, username);
-            printf(GREEN "[THREAD-%-10s] ✅ RESOURCE GRANTED  — %s allocated after wait!\n" RESET, username, res_name);
-            snprintf(detail, sizeof(detail), "Granted %s after wait", res_name);
-            log_incident(username, "GRANTED", detail);
-        } else {
-            cross_unlock();
-            printf(YELLOW "[THREAD-%-10s] 🔓 MUTEX UNLOCKED    — Exiting critical section\n" RESET, username);
-            printf(RED "[THREAD-%-10s] ⚠️  RACE CONDITION    — Resource grabbed by another, try again\n" RESET, username);
-            log_incident(username, "RACE_REQUEUE", res_name);
+            if (res_idx != -1 && res[res_idx].status == 0) {
+                // Got it!
+                strncpy(res[res_idx].held_by, username, MAX_STR);
+                strncpy(res[res_idx].waited_by, "none", MAX_STR);
+                res[res_idx].status = 1;
+                save_resources(res, rcount);
+                cross_unlock();
+                printf(YELLOW "[THREAD-%-10s] 🔓 MUTEX UNLOCKED    — Exiting critical section\n" RESET, username);
+                printf(GREEN "[THREAD-%-10s] ✅ RESOURCE GRANTED  — %s allocated after wait!\n" RESET, username, res_name);
+                snprintf(detail, sizeof(detail), "Granted %s after wait", res_name);
+                log_incident(username, "GRANTED", detail);
+                granted = 1;
+            } else {
+                // Still busy — re-record wait and sleep again
+                if (res_idx != -1) {
+                    strncpy(res[res_idx].waited_by, username, MAX_STR);
+                    save_resources(res, rcount);
+                }
+                cross_unlock();
+                printf(YELLOW "[THREAD-%-10s] 🔓 MUTEX UNLOCKED    — Still busy, waiting again...\n" RESET, username);
+            }
         }
     }
 
@@ -267,7 +275,7 @@ void release_resource(const char *username) {
 void view_allocation_table() {
     Resource res[MAX_RESOURCES];
     int rcount = 0;
-    load_resources(res, &rcount);
+    load_resources_silent(res, &rcount);
 
     print_separator();
     printf(CYAN "📊 EQUIPMENT ALLOCATION TABLE\n" RESET);
