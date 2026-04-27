@@ -140,32 +140,37 @@ void suggest_recovery(ProcessState procs[], int n, const char *cycle) {
     }
 
     printf(YELLOW "[SYSTEM] 🛠️  RECOVERY        — Rolling back: %s\n" RESET, procs[rollback_idx].name);
-    printf(YELLOW "[SYSTEM] 📢 SEMAPHORE POST   — Signaling ALL blocked threads to wake up\n" RESET);
 
-    // Free ALL resources held by the rolled-back process
-    // AND signal ALL semaphores that have waiting processes
-    for (int j = 0; j < num_resources; j++) {
-        if (procs[rollback_idx].allocation[j] > 0) {
-            printf(GREEN "[SYSTEM] 🔓 RESOURCE FREED   — resource[%d] released by %s\n" RESET,
-                   j, procs[rollback_idx].name);
-            sem_post(resource_sem[j]);
+    // ── Actually release resources in CSV for rolled-back process ─────────
+    Resource res[MAX_RESOURCES];
+    int rcount = 0;
+    load_resources(res, &rcount);
+
+    for (int j = 0; j < rcount; j++) {
+        if (strcmp(res[j].held_by, procs[rollback_idx].name) == 0) {
+            printf(GREEN "[SYSTEM] 🔓 RESOURCE FREED   — %s released by %s\n" RESET,
+                   res[j].resource, procs[rollback_idx].name);
+            strncpy(res[j].held_by,   "none", MAX_STR);
+            strncpy(res[j].waited_by, "none", MAX_STR);
+            res[j].status = 0;
         }
-        if (procs[rollback_idx].request[j] > 0) {
-            printf(GREEN "[SYSTEM] 📢 UNBLOCKING       — Signaling resource[%d] semaphore\n" RESET, j);
-            sem_post(resource_sem[j]);
+        // Also clear waited_by for rolled-back process
+        if (strcmp(res[j].waited_by, procs[rollback_idx].name) == 0) {
+            strncpy(res[j].waited_by, "none", MAX_STR);
         }
     }
+    save_resources(res, rcount);
+    printf(GREEN "[SYSTEM] 💾 CSV UPDATED      — Resource state written to file\n" RESET);
 
-    // Signal ALL semaphores that have waiters to break full cycle
-    printf(YELLOW "[SYSTEM] 🔓 BREAKING CYCLE   — Posting all semaphores to unblock deadlocked threads\n" RESET);
-    for (int j = 0; j < num_resources; j++) {
-        int waiting = 0;
+    // ── Signal semaphores for ALL resources that had waiters ──────────────
+    printf(YELLOW "[SYSTEM] 📢 SEMAPHORE POST   — Waking all blocked threads\n" RESET);
+    for (int j = 0; j < rcount; j++) {
         for (int i = 0; i < n; i++) {
-            if (procs[i].request[j] > 0) { waiting = 1; break; }
-        }
-        if (waiting) {
-            sem_post(resource_sem[j]);
-            printf(GREEN "[SYSTEM] 📢 SEMAPHORE POST   — resource[%d] semaphore signaled\n" RESET, j);
+            if (procs[i].request[j] > 0) {
+                sem_post(resource_sem[j]);
+                printf(GREEN "[SYSTEM] 📢 SEMAPHORE POST   — %s semaphore signaled\n" RESET, res[j].resource);
+                break;
+            }
         }
     }
 
