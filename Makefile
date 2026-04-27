@@ -1,35 +1,35 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -g
+CC      = gcc
+CFLAGS  = -Wall -Wextra -g
 LDFLAGS = -lpthread
 
-SRCS = main.c utils.c filestore.c auth.c resources.c deadlock.c comms.c
-OBJS = $(SRCS:.c=.o)
-TARGET = rigguard
+# Client sources
+CLIENT_SRCS = main.c utils.c filestore.c auth.c resources.c deadlock.c comms.c threads.c signals.c
+CLIENT_OBJS = $(CLIENT_SRCS:.c=.o)
 
-all: $(TARGET)
+# Server sources
+SERVER_SRCS = server.c utils.c filestore.c
+SERVER_OBJS = $(SERVER_SRCS:.c=.o)
 
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LDFLAGS)
-	@echo "✅ Build successful! Run with: ./rigguard"
+all: rigguard rigguard_server
+
+rigguard: $(CLIENT_OBJS)
+	$(CC) $(CFLAGS) -o rigguard $(CLIENT_OBJS) $(LDFLAGS)
+	@echo "✅ rigguard (client) built!"
+
+rigguard_server: server.o utils.o filestore.o
+	$(CC) $(CFLAGS) -o rigguard_server server.o utils.o filestore.o $(LDFLAGS)
+	@echo "✅ rigguard_server built!"
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS) $(TARGET)
-	@echo "🧹 Cleaned build files"
+	rm -f $(CLIENT_OBJS) server.o rigguard rigguard_server
+	@echo "🧹 Cleaned!"
 
 reset:
 	rm -f data/*.csv data/.sem_init data/rigguard.lock
-	@for name in rigguard_sem_0 rigguard_sem_1 rigguard_sem_2 rigguard_sem_3 rigguard_sem_4; do \
-		rm -f /dev/shm/sem.$$name 2>/dev/null; \
-	done
-	@echo "🔄 Reset all CSV data and semaphores"
+	@for name in $$(seq 0 19); do rm -f /dev/shm/sem.rigguard_sem_$$name 2>/dev/null; done
+	@echo "🔄 Reset data and semaphores"
 
 .PHONY: all clean reset
-
-reset_sems:
-	@for name in rigguard_sem_0 rigguard_sem_1 rigguard_sem_2 rigguard_sem_3 rigguard_sem_4; do \
-		rm -f /dev/shm/sem.$$name 2>/dev/null; \
-	done
-	@echo "🔄 Named semaphores cleared from /dev/shm"
