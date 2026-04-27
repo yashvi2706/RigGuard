@@ -106,6 +106,25 @@ int load_resources(Resource res[], int *count) {
     return 1;
 }
 
+// ─── Silent version — no mutex print (used in background/menu contexts) ───────
+int load_resources_silent(Resource res[], int *count) {
+    pthread_mutex_lock(&file_mutex);
+    FILE *f = fopen(FILE_RESOURCES, "r");
+    if (!f) { pthread_mutex_unlock(&file_mutex); return 0; }
+    char line[256];
+    *count = 0;
+    fgets(line, sizeof(line), f);
+    while (fgets(line, sizeof(line), f) && *count < MAX_RESOURCES) {
+        sscanf(line, "%[^,],%[^,],%[^,],%d",
+            res[*count].resource, res[*count].held_by,
+            res[*count].waited_by, &res[*count].status);
+        (*count)++;
+    }
+    fclose(f);
+    pthread_mutex_unlock(&file_mutex);
+    return 1;
+}
+
 // ─── Save Resources ───────────────────────────────────────────────────────────
 void save_resources(Resource res[], int count) {
     pthread_mutex_lock(&file_mutex);
