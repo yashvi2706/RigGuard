@@ -7,6 +7,7 @@ void init_data_files();
 int  load_users(User users[], int *count);
 void save_users(User users[], int count);
 int  load_resources(Resource res[], int *count);
+int  load_resources_silent(Resource res[], int *count);
 void save_resources(Resource res[], int count);
 void append_message(const char *sender, const char *receiver, const char *msg);
 void print_messages(const char *for_user);
