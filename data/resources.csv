@@ -1,0 +1,7 @@
+resource,held_by,waited_by,status
+Fire_Suppression,ravi,none,1
+Emergency_Pump,siya,none,1
+Pressure_Valve,none,none,0
+Power_Module,none,none,0
+Comms_Terminal,none,none,0
+Glasses,siya,none,1

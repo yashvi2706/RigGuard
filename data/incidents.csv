@@ -1,0 +1,52 @@
+timestamp,actor,action,detail
+2026-04-30 14:42:19,commander,LOGIN_SUCCESS,Rig_Commander
+2026-04-30 14:42:42,ravi,LOGIN_SUCCESS,Fire_Safety_Officer
+2026-04-30 14:42:52,arjun,LOGIN_SUCCESS,Drilling_Operator
+2026-04-30 14:42:59,meera,LOGIN_SUCCESS,Maintenance_Engineer
+2026-04-30 14:43:44,ravi,MESSAGE_SENT,To=arjun Msg=hi arjun
+2026-04-30 14:44:23,ravi,REQUESTED,Fire_Suppression
+2026-04-30 14:44:23,ravi,GRANTED,Granted Fire_Suppression
+2026-04-30 14:44:34,arjun,REQUESTED,Emergency_Pump
+2026-04-30 14:44:34,arjun,GRANTED,Granted Emergency_Pump
+2026-04-30 14:44:37,meera,REQUESTED,Pressure_Valve
+2026-04-30 14:44:37,meera,GRANTED,Granted Pressure_Valve
+2026-04-30 14:44:48,ravi,REQUESTED,Emergency_Pump
+2026-04-30 14:44:48,ravi,BLOCKED,Blocked on Emergency_Pump held by arjun
+2026-04-30 14:45:52,arjun,REQUESTED,Pressure_Valve
+2026-04-30 14:45:52,arjun,BLOCKED,Blocked on Pressure_Valve held by meera
+2026-04-30 14:46:07,meera,REQUESTED,Fire_Suppression
+2026-04-30 14:46:07,meera,BLOCKED,Blocked on Fire_Suppression held by ravi
+2026-04-30 14:46:07,ravi,MONITOR_DEADLOCK,ravi→arjun→meera→ravi
+2026-04-30 14:46:09,commander,MONITOR_DEADLOCK,ravi→arjun→meera→ravi
+2026-04-30 14:46:09,meera,MONITOR_DEADLOCK,ravi→arjun→meera→ravi
+2026-04-30 14:46:12,arjun,MONITOR_DEADLOCK,ravi→arjun→meera→ravi
+2026-04-30 14:46:34,SYSTEM,DEADLOCK_RECOVERY,Cycle=ravi → arjun → meera → ravi Rollback=ravi
+2026-04-30 14:46:34,meera,GRANTED,Granted Fire_Suppression after wait
+2026-04-30 14:47:22,meera,RELEASED,Pressure_Valve
+2026-04-30 14:47:22,arjun,GRANTED,Granted Pressure_Valve after wait
+2026-04-30 14:47:48,arjun,REQUESTED,Pressure_Valve
+2026-04-30 14:48:11,arjun,RELEASED,Emergency_Pump
+2026-04-30 14:48:11,ravi,GRANTED,Granted Emergency_Pump after wait
+2026-04-30 14:50:01,commander,EMERGENCY_BROADCAST,Everyone ALERT!! FIRE on FLOOR2!!!
+2026-04-30 14:50:23,arjun,RELEASED,Pressure_Valve
+2026-04-30 14:50:33,meera,RELEASED,Fire_Suppression
+2026-04-30 14:51:04,ravi,REQUESTED,Fire_Suppression
+2026-04-30 14:51:04,ravi,GRANTED,Granted Fire_Suppression
+2026-04-30 14:51:58,commander,MESSAGE_SENT,To=meera Msg=Hello meera
+2026-04-30 14:53:08,priya,LOGIN_SUCCESS,Comms_Officer
+2026-04-30 14:54:10,commander,CREW_REGISTERED,New crew: siya Role: Fire_Safety_Officer
+2026-04-30 14:54:26,siya,LOGIN_FAILED,Wrong password
+2026-04-30 14:54:32,siya,LOGIN_SUCCESS,Fire_Safety_Officer
+2026-04-30 14:55:18,priya,LOGOUT,Session ended
+2026-04-30 14:55:57,commander,EQUIPMENT_ADDED,New equipment: Glasses
+2026-04-30 14:56:03,siya,REQUESTED,Emergency_Pump
+2026-04-30 14:56:03,siya,BLOCKED,Blocked on Emergency_Pump held by ravi
+2026-04-30 14:56:20,ravi,RELEASED,Emergency_Pump
+2026-04-30 14:56:20,siya,GRANTED,Granted Emergency_Pump after wait
+2026-04-30 14:56:48,siya,REQUESTED,Glasses
+2026-04-30 14:56:48,siya,GRANTED,Granted Glasses
+2026-04-30 14:57:45,commander,LOGOUT,Session ended
+2026-04-30 14:57:48,ravi,LOGOUT,Session ended
+2026-04-30 14:57:52,arjun,LOGOUT,Session ended
+2026-04-30 14:57:55,meera,LOGOUT,Session ended
+2026-04-30 14:57:58,siya,LOGOUT,Session ended

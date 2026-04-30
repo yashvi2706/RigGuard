@@ -1,0 +1,7 @@
+username,password_hash,role,login_attempts,locked
+commander,96528780,Rig_Commander,0,0
+ravi,21782691,Fire_Safety_Officer,0,0
+arjun,63355959,Drilling_Operator,0,0
+meera,77050233,Maintenance_Engineer,0,0
+priya,28487664,Comms_Officer,0,0
+siya,21782691,Fire_Safety_Officer,0,0
